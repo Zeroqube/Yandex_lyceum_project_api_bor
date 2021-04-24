@@ -13,7 +13,7 @@ class Remainder:
         self.bot = bot
 
     async def remainding(self):
-        schedule.every(30).minute.at(":00").do(self.bot.remind(date=dt.datetime.now().date(),
+        schedule.every().minute.at(":00").do(self.bot.remind(date=dt.datetime.now().date(),
                                                                time=dt.datetime.now().time()))
 
 
