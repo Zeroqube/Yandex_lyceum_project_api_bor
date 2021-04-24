@@ -1,6 +1,7 @@
 import asyncio
 import sqlite3
 from discord.ext import commands
+import schedule
 import datetime as dt
 # в data храниться только токен для удобного использования и сохранения секретности токена
 from .data import TOKEN
@@ -12,7 +13,8 @@ class Remainder:
         self.bot = bot
 
     async def remainding(self):
-        pass
+        schedule.every(30).minute.at(":00").do(self.bot.remind(date=dt.datetime.now().date(),
+                                                               time=dt.datetime.now().time()))
 
 
 class SqlAdapter:
@@ -46,6 +48,9 @@ class ToDo(commands.Cog):
     def __init__(self, bot, adapter):
         self.bot = bot
         self.adapter = adapter
+
+    async def remind(self, date, time):
+        pass
 
     @commands.command(name='help')
     async def set_problem(self, ctx, obj):
