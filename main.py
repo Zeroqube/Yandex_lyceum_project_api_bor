@@ -4,7 +4,7 @@ from discord.ext import commands
 import datetime as dt
 # в data храниться только токен для удобного использования и сохранения секретности токена
 from .data import TOKEN
-SQL_FILE = 'bot_db.sql'
+SQL_FILE = 'bot_problems_db'
 
 
 class Remainder:
@@ -51,8 +51,8 @@ class ToDo(commands.Cog):
         pass
 
     @commands.command(name='help')
-    async def set_problem(self, ctx, obj):
-        pass
+    async def set_problem(self, ctx):
+        await ctx.send('Я бот который поможет тебе распланировать'
 
     @commands.command(name='set problem with deadline')
     async def set_problem(self, ctx, name, date):
