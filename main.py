@@ -15,6 +15,8 @@ class Remainder:
     async def remainding(self):
         schedule.every().minute.at(":00").do(self.bot.remind(date=dt.datetime.now().date(),
                                                                time=dt.datetime.now().time()))
+        schedule.every().minute.at(":30").do(self.bot.remind(date=dt.datetime.now().date(),
+                                                               time=dt.datetime.now().time()))
 
 
 class SqlAdapter:
