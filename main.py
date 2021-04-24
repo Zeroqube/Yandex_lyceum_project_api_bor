@@ -7,6 +7,14 @@ from .data import TOKEN
 SQL_FILE = ''
 
 
+class Remainder:
+    def __init__(self, bot):
+        self.bot = bot
+
+    async def remainding(self):
+        pass
+
+
 class SqlAdapter:
     def __init__(self, sql_file):
         self.sql_file = sql_file
@@ -100,7 +108,29 @@ class ToDo(commands.Cog):
         pass
 
 
-sql_adapter = SqlAdapter(SQL_FILE)
-bot = commands.Bot(command_prefix='!!')
-bot.add_cog(ToDo(bot, sql_adapter))
-bot.run(TOKEN)
+async def bot_main(bot):
+    bot.run(TOKEN)
+
+
+async def reminder_main(remainder):
+    await remainder.remainding()
+
+
+async def main():
+    sql_adapter = SqlAdapter(SQL_FILE)
+
+    bot = commands.Bot(command_prefix='!!')
+    main_bot = ToDo(bot, sql_adapter)
+
+    remainder = Remainder(main_bot)
+
+    main_bot = ToDo(bot, sql_adapter)
+    bot.add_cog(main_bot)
+    await asyncio.gather(
+        bot_main(bot),
+        reminder_main(remainder),
+    )
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
