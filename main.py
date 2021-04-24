@@ -4,7 +4,7 @@ from discord.ext import commands
 import datetime as dt
 # в data храниться только токен для удобного использования и сохранения секретности токена
 from .data import TOKEN
-SQL_FILE = ''
+SQL_FILE = 'bot_db.sql'
 
 
 class Remainder:
