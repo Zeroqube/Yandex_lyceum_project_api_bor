@@ -47,6 +47,9 @@ class ToDo(commands.Cog):
         self.bot = bot
         self.adapter = adapter
 
+    async def remind(self, date):
+        pass
+
     @commands.command(name='help')
     async def set_problem(self, ctx, obj):
         pass
