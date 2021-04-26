@@ -3,134 +3,159 @@ import sqlite3
 from discord.ext import commands
 import datetime as dt
 # в data храниться только токен для удобного использования и сохранения секретности токена
-from .data import TOKEN
-SQL_FILE = ''
+from data import TOKEN
+SQL_FILE = 'bot_db'
 
 
-class Remainder:
-    def __init__(self, bot):
-        self.bot = bot
-
-    async def remainding(self):
-        pass
-
-
-class SqlAdapter:
-    def __init__(self, sql_file):
-        self.sql_file = sql_file
-        self.con = sqlite3.connect(sql_file)
-
-    async def take_object(self):
-        pass
-
-    async def take_objects(self):
-        pass
-
-    async def create_object(self):
-        pass
-
-    async def delete_object(self):
-        pass
-
-    async def change_object(self):
-        pass
-
-    async def create_user(self):
-        pass
-
-    async def take_unused_id(self):
-        pass
+def normalize(a):
+    res = []
+    for line in a:
+        res.append('\t'.join(str(item) for item in line))
+    return res
 
 
-class ToDo(commands.Cog):
-    def __init__(self, bot, adapter):
-        self.bot = bot
-        self.adapter = adapter
+bot = commands.Bot(command_prefix="!")
 
-    @commands.command(name='help')
-    async def set_problem(self, ctx, obj):
-        pass
-
-    @commands.command(name='set problem with deadline')
-    async def set_problem(self, ctx, name, date):
-        pass
-
-    @commands.command(name='delete problem with deadline')
-    async def delete_problem(self, ctx, name):
-        pass
-
-    @commands.command(name='change problem with deadline')
-    async def delete_problem(self, ctx, name, field, value):
-        pass
-
-    @commands.command(name='set problem')
-    async def set_problem(self, ctx, name):
-        pass
-
-    @commands.command(name='delete problem')
-    async def delete_problem(self, ctx, name):
-        pass
-
-    @commands.command(name='change problem')
-    async def delete_problem(self, ctx, name, field, value):
-        pass
-
-    @commands.command(name='set event')
-    async def set_event(self, ctx, name, date):
-        pass
-
-    @commands.command(name='delete event')
-    async def delete_event(self, ctx, name):
-        pass
-
-    @commands.command(name='change event')
-    async def delete_problem(self, ctx, name, field, value):
-        pass
-
-    @commands.command(name='add description')
-    async def delete_event(self, ctx, name, description):
-        pass
-
-    @commands.command(name='change description')
-    async def delete_event(self, ctx, name, description):
-        pass
-
-    @commands.command(name='delete description')
-    async def delete_event(self, ctx, name):
-        pass
-
-    @commands.command(name='get all')
-    async def delete_event(self, ctx, typ):
-        pass
-
-    @commands.command(name='get all')
-    async def delete_event(self, ctx, date):
-        pass
+con = sqlite3.connect(SQL_FILE)
+cur = con.cursor()
 
 
-async def bot_main(bot):
-    bot.run(TOKEN)
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    for guild in bot.guilds:
+        print(
+            f'{bot.user} подключились к чату:\n'
+            f'{guild.name}(id: {guild.id})')
 
 
-async def reminder_main(remainder):
-    await remainder.remainding()
+@bot.command(name='set_task')
+async def set_task(ctx, name):
+    if len(name) > 10:
+        await ctx.send('Название задачи не должно превышать 10 символов!')
+        return
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id, )).fetchone():
+        cur.execute('INSERT INTO channels VALUES (?)', (channel_id, ))
+    if cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?', (channel_id, name)).fetchone():
+        await ctx.send(f'Задача с именнем {name} уже есть!')
+        return
+    cur.execute('INSERT INTO todo(channel_id, task_name) VALUES (?, ?)', (channel_id, name, ))
+    con.commit()
+    print(channel_id, name)
 
 
-async def main():
-    sql_adapter = SqlAdapter(SQL_FILE)
+@bot.command(name='set_date')
+async def set_date(ctx, name, date):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?',
+                       (channel_id, name)).fetchone():
+        await ctx.send(f'Задачи с именнем {name} ещё нет!')
+        return
+    day, month, year = map(int, date.split('.'))
+    date = dt.date(year, month, day)
+    cur.execute('''UPDATE todo
+    SET date = ?
+    WHERE channel_id = ? AND task_name = ?''', (date, channel_id, name))
+    con.commit()
 
-    bot = commands.Bot(command_prefix='!!')
-    main_bot = ToDo(bot, sql_adapter)
 
-    remainder = Remainder(main_bot)
+@bot.command(name='set_time')
+async def set_time(ctx, name, time):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?',
+                       (channel_id, name)).fetchone():
+        await ctx.send(f'Задачи с именнем {name} ещё нет!')
+        return
+    hours, minutes = map(int, time.split(':'))
+    print(hours, minutes)
+    time = dt.time(hour=hours, minute=minutes)
+    print(time)
+    cur.execute('''UPDATE todo
+    SET time = ?
+    WHERE channel_id = ? AND task_name = ?''', (time, channel_id, name))
+    con.commit()
 
-    main_bot = ToDo(bot, sql_adapter)
-    bot.add_cog(main_bot)
-    await asyncio.gather(
-        bot_main(bot),
-        reminder_main(remainder),
-    )
 
-if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+@bot.command(name='set_description')
+async def set_description(ctx, name, *description):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?',
+                       (channel_id, name)).fetchone():
+        await ctx.send(f'Задачи с именнем {name} ещё нет!')
+        return
+    description = ' '.join(description)
+    cur.execute('''UPDATE todo
+    SET description = ?
+    WHERE channel_id = ? AND task_name = ?''', (description, channel_id, name))
+    con.commit()
+
+
+@bot.command(name='get_description')
+async def get_description(ctx, name):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?',
+                       (channel_id, name)).fetchone():
+        await ctx.send(f'Задачи с именнем {name} ещё нет!')
+        return
+    res = cur.execute('SELECT date, time, description FROM todo WHERE channel_id = ?', (channel_id, )).fetchone()
+    s = f'Вы описали задачу {name} {res[0]} {res[1]} так:\n' + res[2]
+    await ctx.send(s)
+
+
+@bot.command(name='get_tasks')
+async def get_tasks(ctx):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id, )).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name, date, time FROM todo WHERE channel_id = ?', (channel_id, )).fetchone():
+        await ctx.send('У вас нет сейчас задач')
+        return
+    res = cur.execute('SELECT task_name, date, time FROM todo WHERE channel_id = ?', (channel_id, )).fetchall()
+    s = 'Ваши задачи:\n' + '\n'.join(normalize(res))
+    await ctx.send(s)
+
+
+@bot.command(name='delete')
+async def delete(ctx, name):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name FROM todo WHERE channel_id = ? AND task_name = ?',
+                       (channel_id, name)).fetchone():
+        await ctx.send(f'Задачи с именнем {name} ещё нет!')
+        return
+    cur.execute('''DELETE FROM todo
+    WHERE channel_id = ? AND task_name = ?''', (channel_id, name, ))
+    await ctx.send(f'Задача с именнем {name} успешно удалена')
+
+
+@bot.command(name='delete_all')
+async def delete_all(ctx):
+    channel_id = ctx.author.id
+    if not cur.execute('SELECT id FROM channels WHERE id = ?', (channel_id,)).fetchone():
+        await ctx.send('У вас ещё не было задач')
+        return
+    if not cur.execute('SELECT task_name, date, time FROM todo WHERE channel_id = ?', (channel_id, )).fetchone():
+        await ctx.send('У вас нет сейчас задач')
+        return
+    cur.execute('''DELETE FROM todo
+    WHERE channel_id = ?''', (channel_id, ))
+    await ctx.send('Все задачи успешно удалены')
+
+
+bot.run(TOKEN)
